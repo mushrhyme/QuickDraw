@@ -4,6 +4,8 @@ import type { PredictResponse } from "@shared/schema";
 import Footer from "@/components/Footer";
 import EventHeader from "@/components/EventHeader";
 import MatrixBackground from "@/components/MatrixBackground";
+import { Button } from "@/components/ui/button";
+import { Eraser } from "lucide-react";
 
 interface DrawingCanvasProps {
   targetClass: string;
@@ -338,6 +340,33 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
     setIsDrawing(false);
   };
 
+  // 지우개 기능: 모든 그림 지우기
+  const handleClear = () => {
+    if (isCompletedRef.current) return; // 완료되었으면 지우기 불가
+    
+    // drawing 상태 초기화
+    setDrawing([]);
+    setCurrentStroke(null);
+    setLastRecordedX(null);
+    setLastRecordedY(null);
+    setLastRecordedTime(null);
+    setIsDrawing(false);
+    
+    // canvas 지우기
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+      }
+    }
+  };
+
   // 캔버스 초기화
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -370,6 +399,20 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
             <div className="text-2xl text-gray-300">
               그려야 할 그림: <span className="text-primary font-bold">{targetClass}</span>
             </div>
+          </div>
+
+          {/* 지우개 버튼 */}
+          <div className="flex justify-center mb-4">
+            <Button
+              onClick={handleClear}
+              variant="default"
+              size="lg"
+              className="h-12 px-6 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+              disabled={isCompletedRef.current || countdown === 0}
+            >
+              <Eraser className="w-5 h-5 mr-2" />
+              지우개
+            </Button>
           </div>
 
           {/* 캔버스 */}
