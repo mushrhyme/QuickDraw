@@ -52,6 +52,11 @@ npm run dev
 
 브라우저에서 `http://localhost:3000`으로 접속하여 그림 그리기 및 실시간 예측을 사용할 수 있습니다.
 
+**참고**: Python 의존성도 설치되어 있어야 합니다:
+```bash
+pip install -r requirements.txt
+```
+
 ## 프로젝트 구조
 
 ```

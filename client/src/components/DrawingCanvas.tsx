@@ -48,7 +48,12 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
     }
 
     if (countdown === 0) {
-      handleComplete();
+      // 카운트다운이 0이 되는 시점의 시간 측정
+      const endTime = Date.now();
+      const actualTime = startTime ? (endTime - startTime) / 1000 : COUNTDOWN_SECONDS;
+      
+      // handleComplete에 실제 시간 전달을 위해 수정 필요
+      handleComplete(actualTime);
       return;
     }
 
@@ -73,7 +78,7 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
       clearTimeout(predictionTimeoutRef.current);
     }
 
-    // 300ms 후 예측 실행 (디바운싱)
+    // 100ms 후 예측 실행 (디바운싱 - 모델이 메모리에 있어서 더 빠르게)
     predictionTimeoutRef.current = setTimeout(async () => {
       // 예측 중에 완료되었는지 다시 확인 (useRef 사용으로 최신 값 보장)
       if (isCompletedRef.current) return;
@@ -100,12 +105,16 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
             clearTimeout(predictionTimeoutRef.current);
           }
 
+          // 실제 그림 그리기 시작 시간부터 현재까지의 시간 측정
           const drawingTime = startTime ? (Date.now() - startTime) / 1000 : 0;
+          
+          // 정확도 값 정규화 (0-1 범위 보장)
+          const finalConfidence = Math.min(1.0, Math.max(0.0, result.confidence));
           
           // 즉시 화면 전환 (80% threshold를 넘긴 시점의 그림 사용)
           onComplete({
             predictedClass: result.predictedClass,
-            confidence: result.confidence,
+            confidence: finalConfidence,
             drawingTime,
             success: true,
           });
@@ -171,7 +180,7 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
   };
 
   // 완료 처리 (20초가 지났거나 수동 완료 시)
-  const handleComplete = async () => {
+  const handleComplete = async (providedTime?: number) => {
     // 이미 완료되었으면 중복 실행 방지
     if (isCompletedRef.current) return;
     
@@ -186,8 +195,12 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
       ? [...drawing, [currentStroke.x, currentStroke.y]]
       : drawing;
 
+    // 시간 측정: 제공된 시간이 있으면 사용, 없으면 현재 시간 기준
+    const drawingTime = providedTime !== undefined 
+      ? providedTime 
+      : (startTime ? (Date.now() - startTime) / 1000 : COUNTDOWN_SECONDS);
+
     if (finalDrawing.length === 0) {
-      const drawingTime = startTime ? (Date.now() - startTime) / 1000 : COUNTDOWN_SECONDS;
       onComplete({
         predictedClass: "",
         confidence: 0,
@@ -204,17 +217,19 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
       });
 
       const result = await response.json() as PredictResponse;
-      const drawingTime = startTime ? (Date.now() - startTime) / 1000 : COUNTDOWN_SECONDS;
+      
+      // 정확도 값 정규화 (0-1 범위 보장)
+      // ONNX 출력은 이미 확률이므로 그대로 사용하되, 범위 체크
+      const finalConfidence = Math.min(1.0, Math.max(0.0, result.confidence));
 
       onComplete({
         predictedClass: result.predictedClass,
-        confidence: result.confidence,
+        confidence: finalConfidence,
         drawingTime,
-        success: result.predictedClass === targetClass && result.confidence >= PREDICTION_THRESHOLD,
+        success: result.predictedClass === targetClass && finalConfidence >= PREDICTION_THRESHOLD,
       });
     } catch (error) {
       console.error("예측 실패:", error);
-      const drawingTime = startTime ? (Date.now() - startTime) / 1000 : COUNTDOWN_SECONDS;
       onComplete({
         predictedClass: "",
         confidence: 0,
