@@ -1,6 +1,6 @@
-# QuickDraw RNN 분류기
+# QuickDraw
 
-QuickDraw 데이터셋을 사용하여 그린 그림을 분류하는 RNN 모델입니다.
+QuickDraw 데이터셋을 사용하여 그린 그림을 분류하는 RNN 모델 및 React 웹 애플리케이션입니다.
 
 ## 사용 순서
 
@@ -41,32 +41,35 @@ python scripts/convert_to_onnx.py
 
 - 변환된 모델: `models/quickdraw_rnn.onnx`
 
-### 4. 그림 그리기 및 예측
+### 4. 웹 애플리케이션 실행
 
-웹 브라우저에서 `public/draw_test.html`을 열어 그림을 그립니다.
-
-**사용 방법:**
-1. 브라우저에서 `public/draw_test.html` 열기
-2. 캔버스에 그림 그리기
-   - 💡 팁: 빠르게 그리고, 자주 손을 떼어 여러 스트로크로 그리세요
-   - 학습 데이터는 보통 3-5개 스트로크, 30-70개 포인트로 구성됩니다
-   - 포인트는 자동으로 샘플링되어 기록됩니다
-3. "Export JSON" 버튼 클릭하여 `drawing.json` 다운로드
-4. Python으로 예측 실행:
+React 기반 웹 애플리케이션을 실행합니다.
 
 ```bash
-# 간단한 예측 스크립트 (필요시 생성)
-python predict.py drawing.json
+npm install
+npm run dev
 ```
+
+브라우저에서 `http://localhost:3000`으로 접속하여 그림 그리기 및 실시간 예측을 사용할 수 있습니다.
 
 ## 프로젝트 구조
 
 ```
 quickdraw/
+├── client/                # React 프론트엔드
+│   ├── src/
+│   │   ├── components/   # React 컴포넌트
+│   │   ├── pages/        # 페이지 컴포넌트
+│   │   └── lib/          # 유틸리티
+│   └── public/           # 정적 파일
+├── server/                # Express 백엔드
+│   ├── index.ts          # 서버 진입점
+│   ├── routes.ts         # API 라우트
+│   └── vite.ts           # Vite 설정
 ├── data/raw/              # 학습 데이터 (ndjson 파일들)
 ├── models/                # 학습된 모델
 │   └── quickdraw_rnn.keras
-├── public/                # 웹 인터페이스
+├── public/                # 기존 HTML 인터페이스
 │   └── draw_test.html
 ├── scripts/              # 유틸리티 스크립트
 │   ├── download_quickdraw.py
@@ -74,6 +77,7 @@ quickdraw/
 ├── src/                  # 핵심 코드
 │   ├── data_loader.py    # 데이터 로딩 및 전처리
 │   └── model.py          # 모델 정의
+├── shared/               # 공유 타입 및 스키마
 └── train.py             # 학습 스크립트
 ```
 
@@ -89,8 +93,14 @@ quickdraw/
 
 ## 요구사항
 
+### Python
 ```bash
 pip install tensorflow numpy scikit-learn requests tqdm tf2onnx onnxruntime
+```
+
+### Node.js
+```bash
+npm install
 ```
 
 ## 참고사항
@@ -98,4 +108,4 @@ pip install tensorflow numpy scikit-learn requests tqdm tf2onnx onnxruntime
 - 학습 데이터는 Google QuickDraw 데이터셋을 사용합니다
 - 모델은 간단한 그림에 최적화되어 있습니다
 - 복잡한 그림은 더 간단하게 그리면 인식률이 향상됩니다
-
+- 실시간 예측: 그림을 그리는 동안 80% 이상 정확도로 목표 클래스를 맞추면 자동으로 다음 단계로 진행됩니다
