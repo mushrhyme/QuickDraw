@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickDraw Drawing Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        canvas {
+            border: 2px solid #333;
+            cursor: crosshair;
+            background-color: white;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button#clearBtn {
+            background-color: #f44336;
+        }
+        button#clearBtn:hover {
+            background-color: #da190b;
+        }
+    </style>
+</head>
+<body>
+    <h1>QuickDraw Drawing Test</h1>
+    <div style="margin-bottom: 10px; color: #666; font-size: 14px;">
+        💡 팁: 빠르게 그리고, 자주 손을 떼어 여러 스트로크로 그리세요!<br>
+        학습 데이터는 보통 <strong>3-5개의 스트로크</strong>와 <strong>30-70개의 포인트</strong>로 구성됩니다.<br>
+        포인트는 자동으로 샘플링되어 기록됩니다 (거리 12px 이상, 시간 30ms 이상 간격).
+    </div>
+    <canvas id="drawingCanvas" width="500" height="500"></canvas>
+    <div class="controls">
+        <button id="clearBtn">Clear</button>
+        <button id="exportBtn">Export JSON</button>
+    </div>
+    <div id="stats" style="margin-top: 10px; color: #666; font-size: 12px;"></div>
+
+    <script>
+        // 캔버스 및 컨텍스트 설정
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // QuickDraw 형식 데이터 구조: [[[x0,x1,...], [y0,y1,...]], [[...],[...]], ...]
+        let drawing = [];
+        let currentStroke = null;  // 현재 스트로크: {x: [], y: []}
+        let isDrawing = false;     // 그리기 중인지 여부
+
+        // 캔버스 초기화 (흰색 배경)
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // 마우스 다운 이벤트 - 새 스트로크 시작
+        canvas.addEventListener('mousedown', (e) => {
+            // 이전 스트로크가 일정 시간 지나면 자동으로 끊기
+            if (lastStrokeTime && Date.now() - lastStrokeTime > STROKE_TIMEOUT && currentStroke) {
+                drawing.push([currentStroke.x, currentStroke.y]);
+                currentStroke = null;
+            }
+            
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;  // 캔버스 좌표계로 변환
+            const y = e.clientY - rect.top;
+            
+            // 새 스트로크 시작
+            currentStroke = {
+                x: [x],
+                y: [y]
+            };
+            
+            // 초기화
+            lastRecordedX = x;
+            lastRecordedY = y;
+            lastRecordedTime = Date.now();
+            lastStrokeTime = Date.now();
+            
+            // 경로 시작
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        });
+
+        // 포인트 샘플링 설정 (학습 데이터와 유사하게)
+        const MIN_DISTANCE = 12;  // 최소 거리 (픽셀) - 이 거리 이상 이동해야 포인트 기록
+        const MIN_TIME_INTERVAL = 30;  // 최소 시간 간격 (ms) - 이 시간 이상 지나야 포인트 기록
+        let lastRecordedX = null;
+        let lastRecordedY = null;
+        let lastRecordedTime = null;
+        let lastStrokeTime = null;
+        const STROKE_TIMEOUT = 200;  // 200ms 동안 그리지 않으면 스트로크 자동 끊김
+
+        // 마우스 이동 이벤트 - 스트로크 기록 및 그리기
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing || !currentStroke) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;  // 캔버스 좌표계로 변환
+            const y = e.clientY - rect.top;
+            const currentTime = Date.now();
+            
+            // 선은 항상 그리기 (시각적 피드백)
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            // 포인트 기록 조건: 거리 AND 시간 모두 만족해야 함
+            let shouldRecord = false;
+            if (lastRecordedX === null || lastRecordedY === null || lastRecordedTime === null) {
+                // 첫 포인트는 항상 기록
+                shouldRecord = true;
+            } else {
+                const distance = Math.sqrt(
+                    Math.pow(x - lastRecordedX, 2) + Math.pow(y - lastRecordedY, 2)
+                );
+                const timeElapsed = currentTime - lastRecordedTime;
+                
+                // 거리와 시간 모두 조건을 만족해야 기록
+                if (distance >= MIN_DISTANCE && timeElapsed >= MIN_TIME_INTERVAL) {
+                    shouldRecord = true;
+                }
+            }
+            
+            // 포인트는 조건부로만 기록 (띄엄띄엄)
+            if (shouldRecord) {
+                currentStroke.x.push(x);
+                currentStroke.y.push(y);
+                lastRecordedX = x;
+                lastRecordedY = y;
+                lastRecordedTime = currentTime;
+                lastStrokeTime = currentTime;
+            }
+        });
+
+        // 통계 업데이트 함수
+        function updateStats() {
+            let totalStrokes = drawing.length + (currentStroke ? 1 : 0);
+            let totalPoints = 0;
+            for (let stroke of drawing) {
+                totalPoints += stroke[0].length;
+            }
+            if (currentStroke) {
+                totalPoints += currentStroke.x.length;
+            }
+            document.getElementById('stats').textContent = 
+                `스트로크: ${totalStrokes} | 포인트: ${totalPoints}`;
+        }
+
+        // 마우스 업 이벤트 - 스트로크 완료
+        canvas.addEventListener('mouseup', () => {
+            if (isDrawing && currentStroke) {
+                // 현재 스트로크를 drawing 배열에 추가
+                drawing.push([currentStroke.x, currentStroke.y]);
+                currentStroke = null;
+                lastRecordedX = null;
+                lastRecordedY = null;
+                lastRecordedTime = null;
+                updateStats();
+            }
+            isDrawing = false;
+        });
+
+        // 마우스가 캔버스 밖으로 나갈 때도 스트로크 종료
+        canvas.addEventListener('mouseleave', () => {
+            if (isDrawing && currentStroke) {
+                drawing.push([currentStroke.x, currentStroke.y]);
+                currentStroke = null;
+                lastRecordedX = null;
+                lastRecordedY = null;
+                lastRecordedTime = null;
+                updateStats();
+            }
+            isDrawing = false;
+        });
+        
+        // 초기 통계 표시
+        updateStats();
+
+        // Clear 버튼 - 캔버스 및 스트로크 초기화
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            // 캔버스 지우기
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 스트로크 데이터 초기화
+            drawing = [];
+            currentStroke = null;
+            isDrawing = false;
+            lastRecordedX = null;
+            lastRecordedY = null;
+            lastRecordedTime = null;
+            lastStrokeTime = null;
+        });
+
+        // 스트로크 다운샘플링 함수 (너무 많은 포인트가 있으면 줄이기)
+        function downsampleStroke(stroke, maxPoints = 30) {
+            if (stroke[0].length <= maxPoints) return stroke;
+            
+            const x = stroke[0];
+            const y = stroke[1];
+            const step = Math.ceil(x.length / maxPoints);
+            
+            const downsampledX = [];
+            const downsampledY = [];
+            
+            // 첫 포인트와 마지막 포인트는 항상 포함
+            downsampledX.push(x[0]);
+            downsampledY.push(y[0]);
+            
+            // 중간 포인트들을 간격을 두고 선택
+            for (let i = step; i < x.length - 1; i += step) {
+                downsampledX.push(x[i]);
+                downsampledY.push(y[i]);
+            }
+            
+            // 마지막 포인트
+            downsampledX.push(x[x.length - 1]);
+            downsampledY.push(y[y.length - 1]);
+            
+            return [downsampledX, downsampledY];
+        }
+
+        // 좌표를 0-255 범위로 정규화하는 함수
+        function normalizeDrawing(drawing) {
+            if (drawing.length === 0) return drawing;
+            
+            // 먼저 각 스트로크를 다운샘플링 (너무 많은 포인트 줄이기)
+            const downsampled = drawing.map(stroke => downsampleStroke(stroke, 30));
+            
+            // 모든 좌표 수집
+            let allX = [];
+            let allY = [];
+            for (let stroke of downsampled) {
+                allX = allX.concat(stroke[0]);
+                allY = allY.concat(stroke[1]);
+            }
+            
+            if (allX.length === 0) return drawing;
+            
+            // 범위 계산
+            const xMin = Math.min(...allX);
+            const xMax = Math.max(...allX);
+            const yMin = Math.min(...allY);
+            const yMax = Math.max(...allY);
+            
+            const xRange = xMax - xMin || 1;
+            const yRange = yMax - yMin || 1;
+            
+            // 정규화된 drawing 생성
+            const normalized = [];
+            for (let stroke of downsampled) {
+                const normX = stroke[0].map(x => Math.round((x - xMin) / xRange * 255));
+                const normY = stroke[1].map(y => Math.round((y - yMin) / yRange * 255));
+                normalized.push([normX, normY]);
+            }
+            
+            return normalized;
+        }
+
+        // Export JSON 버튼 - drawing.json 다운로드
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            // 마지막 스트로크도 추가
+            if (currentStroke) {
+                drawing.push([currentStroke.x, currentStroke.y]);
+                currentStroke = null;
+            }
+            
+            // 좌표 정규화 (0-255 범위)
+            const normalizedDrawing = normalizeDrawing(drawing);
+            
+            // JSON 구조 생성: { "drawing": [...] }
+            const jsonData = {
+                drawing: normalizedDrawing
+            };
+            
+            // JSON 문자열로 변환
+            const jsonString = JSON.stringify(jsonData, null, 2);
+            
+            // Blob 생성 및 다운로드
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'drawing.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // 통계 출력
+            let totalPoints = 0;
+            for (let stroke of normalizedDrawing) {
+                totalPoints += stroke[0].length;
+            }
+            console.log(`스트로크 수: ${normalizedDrawing.length}`);
+            console.log(`총 포인트 수: ${totalPoints}`);
+            alert(`Export 완료!\n스트로크 수: ${normalizedDrawing.length}\n총 포인트 수: ${totalPoints}`);
+        });
+    </script>
+</body>
+</html>
+

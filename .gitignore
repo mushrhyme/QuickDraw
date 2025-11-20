@@ -1,0 +1,42 @@
+node_modules
+dist
+.DS_Store
+*.tar.gz
+
+# 환경 변수 파일 (비밀 정보 포함)
+.env
+.env.*
+.env.local
+.env.*.local
+.env.backup
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+build/
+*.tsbuildinfo
