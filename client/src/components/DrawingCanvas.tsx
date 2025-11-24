@@ -6,6 +6,7 @@ import EventHeader from "@/components/EventHeader";
 import MatrixBackground from "@/components/MatrixBackground";
 import { Button } from "@/components/ui/button";
 import { Eraser } from "lucide-react";
+import { CATEGORY_NAMES } from "@shared/categories";
 
 interface DrawingCanvasProps {
   targetClass: string;
@@ -14,6 +15,7 @@ interface DrawingCanvasProps {
     confidence: number;
     drawingTime: number;
     success: boolean;
+    drawingImage?: string | null;
   }) => void;
 }
 
@@ -22,6 +24,8 @@ const MIN_TIME_INTERVAL = 30;
 const STROKE_TIMEOUT = 200;
 const PREDICTION_THRESHOLD = 0.8;
 const COUNTDOWN_SECONDS = 20;
+
+const CLASS_NAMES = CATEGORY_NAMES;
 
 export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -113,12 +117,17 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
           // 정확도 값 정규화 (0-1 범위 보장)
           const finalConfidence = Math.min(1.0, Math.max(0.0, result.confidence));
           
+          // canvas를 이미지로 변환
+          const canvas = canvasRef.current;
+          const drawingImage = canvas ? canvas.toDataURL('image/png') : null;
+          
           // 즉시 화면 전환 (80% threshold를 넘긴 시점의 그림 사용)
           onComplete({
             predictedClass: result.predictedClass,
             confidence: finalConfidence,
             drawingTime,
             success: true,
+            drawingImage,
           });
         }
       } catch (error) {
@@ -203,11 +212,14 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
       : (startTime ? (Date.now() - startTime) / 1000 : COUNTDOWN_SECONDS);
 
     if (finalDrawing.length === 0) {
+      const canvas = canvasRef.current;
+      const drawingImage = canvas ? canvas.toDataURL('image/png') : null;
       onComplete({
         predictedClass: "",
         confidence: 0,
         drawingTime,
         success: false,
+        drawingImage,
       });
       return;
     }
@@ -224,19 +236,27 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
       // ONNX 출력은 이미 확률이므로 그대로 사용하되, 범위 체크
       const finalConfidence = Math.min(1.0, Math.max(0.0, result.confidence));
 
+      // canvas를 이미지로 변환
+      const canvas = canvasRef.current;
+      const drawingImage = canvas ? canvas.toDataURL('image/png') : null;
+
       onComplete({
         predictedClass: result.predictedClass,
         confidence: finalConfidence,
         drawingTime,
         success: result.predictedClass === targetClass && finalConfidence >= PREDICTION_THRESHOLD,
+        drawingImage,
       });
     } catch (error) {
       console.error("예측 실패:", error);
+      const canvas = canvasRef.current;
+      const drawingImage = canvas ? canvas.toDataURL('image/png') : null;
       onComplete({
         predictedClass: "",
         confidence: 0,
         drawingTime,
         success: false,
+        drawingImage,
       });
     }
   };
@@ -397,7 +417,7 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
               {countdown}초
             </div>
             <div className="text-2xl text-gray-300">
-              그려야 할 그림: <span className="text-primary font-bold">{targetClass}</span>
+              그려야 할 그림: <span className="text-primary font-bold">{CLASS_NAMES[targetClass] || targetClass}</span>
             </div>
           </div>
 

@@ -22,6 +22,12 @@ venv/
 env/
 ENV/
 .venv
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pytype/
 
 # IDE
 .vscode/
@@ -40,3 +46,19 @@ yarn-error.log*
 # Build outputs
 build/
 *.tsbuildinfo
+
+# 데이터 파일 (용량이 큼)
+data/raw/*.ndjson
+data/*.xlsx
+data/*.xls
+
+# 모델 파일 (용량이 큼, 필요시 다운로드)
+models/*.keras
+models/*.onnx
+models/*.h5
+models/*.pb
+
+# 임시 파일
+*.tmp
+*.temp
+.cache/

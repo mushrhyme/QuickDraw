@@ -2,6 +2,7 @@ import { spawn } from "child_process";
 import { resolve as pathResolve } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { CATEGORIES } from "../shared/categories";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,7 +31,9 @@ export async function predictDrawing(
     }
     
     const scriptPath = pathResolve(projectRoot, "predict_api.py");
-    const onnxModelPath = pathResolve(projectRoot, "models", "quickdraw_rnn.onnx");
+    // 카테고리 수에 맞는 모델 파일 자동 선택
+    const numClasses = CATEGORIES.length;
+    const onnxModelPath = pathResolve(projectRoot, "models", `quickdraw_rnn_${numClasses}classes.onnx`);
     
     // Python 명령어 (conda 환경 또는 기본 python)
     const pythonCommand = process.env.PYTHON_PATH || "python";

@@ -99,3 +99,6 @@ pip install tensorflow[and-cuda]
 ### 메모리 부족 오류
 `train.py`에서 `BATCH_SIZE`를 줄이거나 `MAX_ITEMS_PER_CLASS`를 줄여보세요.
 
+
+
+

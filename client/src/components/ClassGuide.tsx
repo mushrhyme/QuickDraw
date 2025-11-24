@@ -2,19 +2,14 @@ import { useEffect, useState } from "react";
 import Footer from "@/components/Footer";
 import EventHeader from "@/components/EventHeader";
 import MatrixBackground from "@/components/MatrixBackground";
+import { CATEGORY_NAMES } from "@shared/categories";
 
 interface ClassGuideProps {
   targetClass: string;
   onComplete: () => void;
 }
 
-const CLASS_NAMES: Record<string, string> = {
-  cat: "고양이",
-  dog: "강아지",
-  airplane: "비행기",
-  car: "자동차",
-  bird: "새",
-};
+const CLASS_NAMES = CATEGORY_NAMES;
 
 export default function ClassGuide({ targetClass, onComplete }: ClassGuideProps) {
   const [countdown, setCountdown] = useState(5);

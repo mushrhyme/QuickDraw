@@ -11,18 +11,30 @@ from pathlib import Path
 import onnxruntime as ort
 from src import data_loader
 
-CATEGORIES = ["cat", "dog", "airplane", "car", "bird"]
+# 공통 카테고리 설정 파일에서 로드
+# ⚠️ 예측 API는 항상 전체 카테고리를 사용합니다 (모델이 전체 카테고리로 학습되었으므로)
+categories_json_path = Path(__file__).parent / "shared" / "categories.json"
+if categories_json_path.exists():
+    with open(categories_json_path, 'r', encoding='utf-8') as f:
+        categories_data = json.load(f)
+        CATEGORIES = categories_data["categories"]  # 항상 전체 카테고리 사용
+else:
+    # 기본값 (파일이 없을 경우)
+    CATEGORIES = ["fan", "fire hydrant", "horse", "elephant", "donut"]
 
 # 모델 로드 시간 측정
 model_load_start = time.time()
 
-# ONNX 모델 경로 결정: 명령줄 인자 > 환경 변수 > 기본값
+# ONNX 모델 경로 결정: 명령줄 인자 > 환경 변수 > 기본값 (카테고리 수에 맞게 자동 생성)
 onnx_model_path = None
 if len(sys.argv) >= 2:
     onnx_model_path = sys.argv[1]  # 첫 번째 인자로 ONNX 모델 경로 지정
 
 if not onnx_model_path:
-    onnx_model_path = os.getenv("ONNX_MODEL_PATH", "models/quickdraw_rnn.onnx")
+    # 카테고리 수에 맞는 모델 파일 자동 선택
+    num_classes = len(CATEGORIES)
+    default_model = f"models/quickdraw_rnn_{num_classes}classes.onnx"
+    onnx_model_path = os.getenv("ONNX_MODEL_PATH", default_model)
 
 # 절대 경로로 변환 (상대 경로인 경우)
 if not os.path.isabs(onnx_model_path):
@@ -89,7 +101,7 @@ def main():
         
         # 예측 (ONNX)
         predictions = onnx_session.run([output_name], {input_name: input_array})[0]
-        probabilities = predictions[0]  # (5,) 형태
+        probabilities = predictions[0]  # (10,) 형태
         
         # 확률 정규화 (softmax가 이미 적용되어 있지만, 안전을 위해 정규화)
         # ONNX 모델 출력이 로그 확률일 수도 있으므로 확인

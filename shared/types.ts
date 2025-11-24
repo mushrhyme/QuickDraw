@@ -5,6 +5,14 @@ export interface LoginInfo {
   employeeId: string;
 }
 
+export interface User {
+  id: string;
+  company: string;
+  employeeId: string;
+  name: string;
+  department: string;
+}
+
 export interface DrawingResult {
   predictedClass: string;
   confidence: number;

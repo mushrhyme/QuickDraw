@@ -1,6 +1,8 @@
 import os
+import json
 import requests
 from tqdm import tqdm
+from pathlib import Path
 
 def download_file(url, filepath):
     """Download a file from URL with progress bar."""
@@ -25,15 +27,21 @@ def main():
     """
     QuickDraw 데이터셋 다운로드
     
-    클래스 수를 늘리려면 아래 CATEGORIES 리스트를 수정하세요.
-    train.py의 CATEGORIES와 동일하게 맞춰주세요.
+    카테고리는 shared/categories.json에서 자동으로 로드됩니다.
     """
     # ============================================================================
-    # 설정: train.py의 CATEGORIES와 동일하게 맞춰주세요
+    # 설정: shared/categories.json에서 카테고리 로드
     # ============================================================================
-    categories = ["cat", "dog", "airplane", "car", "bird"]
-    # 클래스 추가 예시:
-    # categories = ["cat", "dog", "airplane", "car", "bird", "house", "tree", "sun", "moon", "star"]
+    categories_json_path = Path(__file__).parent.parent / "shared" / "categories.json"
+    if categories_json_path.exists():
+        with open(categories_json_path, 'r', encoding='utf-8') as f:
+            categories_data = json.load(f)
+            categories = categories_data["categories"]
+        print(f"✓ 카테고리 설정 파일에서 로드: {categories_json_path}")
+    else:
+        # 기본값 (파일이 없을 경우)
+        categories = ["fan", "fire hydrant", "horse", "elephant", "donut"]
+        print(f"⚠️  카테고리 설정 파일을 찾을 수 없어 기본값을 사용합니다.")
     
     # Create data/raw directory
     output_dir = "data/raw"
