@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 import type { QuickDrawResult } from "../shared/schema";
-import { formatKSTDateTime, getErrorMessage } from "../shared/utils";
+import { getErrorMessage } from "../shared/utils";
 import { CATEGORY_NAMES } from "../shared/categories";
 
 /**

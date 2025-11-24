@@ -2,15 +2,15 @@
  * QuickDraw 카테고리 설정
  * Python과 TypeScript 모두에서 사용하는 공통 설정
  * 
- * 특정 카테고리만 사용하려면:
- * 1. categories.json의 activeCategories를 수정하거나
- * 2. 아래 ACTIVE_CATEGORIES를 직접 수정하세요.
+ * 특정 카테고리만 사용하려면 아래 ACTIVE_CATEGORIES를 직접 수정하세요.
  */
 
 // 전체 카테고리 목록
+// ⚠️ 중요: 이 순서는 모델 학습 시 사용된 순서와 정확히 일치해야 합니다!
+// 모델 학습 순서: cat, dog, airplane, car, bird, donut, horse, elephant, fan, fire hydrant
 export const CATEGORIES = [
-  // "cat", "dog", "airplane", "car", "bird", "fan", 
-  "fire hydrant", "horse", "elephant"] as const;
+  "cat", "dog", "airplane", "car", "bird", "donut", 
+  "horse", "elephant", "fan", "fire hydrant"] as const;
 
 export const CATEGORY_NAMES: Record<string, string> = {
   cat: "고양이",
@@ -18,11 +18,11 @@ export const CATEGORY_NAMES: Record<string, string> = {
   airplane: "비행기",
   car: "자동차",
   bird: "새",
-  fan: "선풍기",
-  "fire hydrant": "소화전",
+  donut: "도넛",
   horse: "말",
   elephant: "코끼리",
-  donut: "도넛",
+  fan: "선풍기",
+  "fire hydrant": "소화전",
 };
 
 export type Category = typeof CATEGORIES[number];
@@ -37,9 +37,6 @@ export type Category = typeof CATEGORIES[number];
  * - 특정 카테고리만 사용: ["cat", "dog", "airplane"]
  * 
  * 현재 설정: null (전체 카테고리 사용)
- * 
- * 💡 categories.json의 activeCategories를 수정해도 자동으로 반영됩니다.
- *    하지만 더 빠른 반영을 위해서는 이 파일을 직접 수정하는 것을 권장합니다.
  */
 export const ACTIVE_CATEGORIES: readonly string[] | null = null;
 

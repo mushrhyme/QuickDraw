@@ -7,9 +7,12 @@ import MatrixBackground from "@/components/MatrixBackground";
 import { Button } from "@/components/ui/button";
 import { Eraser } from "lucide-react";
 import { CATEGORY_NAMES } from "@shared/categories";
+import { useIsMobile } from "@/hooks/use-mobile";
+import type { User } from "@shared/types";
 
 interface DrawingCanvasProps {
   targetClass: string;
+  user: User | null; // 사용자 정보 추가
   onComplete: (result: {
     predictedClass: string;
     confidence: number;
@@ -27,7 +30,8 @@ const COUNTDOWN_SECONDS = 20;
 
 const CLASS_NAMES = CATEGORY_NAMES;
 
-export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvasProps) {
+export default function DrawingCanvas({ targetClass, user, onComplete }: DrawingCanvasProps) {
+  const isMobile = useIsMobile(); // 모바일 레이아웃 감지
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [drawing, setDrawing] = useState<number[][][]>([]);
   const [currentStroke, setCurrentStroke] = useState<{ x: number[]; y: number[] } | null>(null);
@@ -41,6 +45,10 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
   const [isCompleted, setIsCompleted] = useState(false); // 완료 상태 추적 (UI용)
   const isCompletedRef = useRef(false); // 완료 상태 추적 (실제 로직용 - 클로저 문제 해결)
   const predictionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [realtimePrediction, setRealtimePrediction] = useState<{
+    predictedClass: string;
+    confidence: number;
+  } | null>(null); // 실시간 예측 결과
 
   // 카운트다운 및 시간 측정
   useEffect(() => {
@@ -93,9 +101,22 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
         const normalized = normalizeDrawing(drawingData);
         const response = await apiRequest("POST", "/api/predict", {
           drawing: normalized,
+          // 사용자 정보 (로그용, 선택적)
+          user: user ? {
+            company: user.company,
+            employeeId: user.employeeId,
+            name: user.name,
+            department: user.department,
+          } : undefined,
         });
 
         const result = await response.json() as PredictResponse;
+
+        // 실시간 예측 결과 표시
+        setRealtimePrediction({
+          predictedClass: result.predictedClass,
+          confidence: result.confidence,
+        });
 
         // 80% 이상 정확도로 맞췄는지 확인
         if (
@@ -122,6 +143,7 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
           const drawingImage = canvas ? canvas.toDataURL('image/png') : null;
           
           // 즉시 화면 전환 (80% threshold를 넘긴 시점의 그림 사용)
+          setRealtimePrediction(null); // 실시간 예측 메시지 제거
           onComplete({
             predictedClass: result.predictedClass,
             confidence: finalConfidence,
@@ -134,7 +156,7 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
         console.error("예측 실패:", error);
       }
     }, 300);
-  }, [targetClass, startTime, onComplete]);
+  }, [targetClass, startTime, onComplete, user]);
 
   // 그림 정규화 함수
   const normalizeDrawing = (drawing: number[][][]): number[][][] => {
@@ -228,6 +250,13 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
       const normalized = normalizeDrawing(finalDrawing);
       const response = await apiRequest("POST", "/api/predict", {
         drawing: normalized,
+        // 사용자 정보 (로그용, 선택적)
+        user: user ? {
+          company: user.company,
+          employeeId: user.employeeId,
+          name: user.name,
+          department: user.department,
+        } : undefined,
       });
 
       const result = await response.json() as PredictResponse;
@@ -261,16 +290,21 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
     }
   };
 
-  // 마우스 다운
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (countdown === 0 || isCompletedRef.current) return; // 완료되었으면 그리기 중지
-
+  // 좌표 가져오기 (마우스/터치 공통)
+  const getCoordinates = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return null;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  };
+
+  // 그리기 시작 (마우스/터치 공통)
+  const startDrawing = (x: number, y: number) => {
+    if (countdown === 0 || isCompletedRef.current) return;
 
     // 이전 스트로크가 일정 시간 지나면 자동으로 끊기
     if (lastStrokeTime && Date.now() - lastStrokeTime > STROKE_TIMEOUT && currentStroke) {
@@ -286,6 +320,8 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
     setLastRecordedTime(Date.now());
     setLastStrokeTime(Date.now());
 
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.beginPath();
@@ -293,16 +329,33 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
     }
   };
 
-  // 마우스 이동
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !currentStroke || countdown === 0 || isCompletedRef.current) return; // 완료되었으면 그리기 중지
+  // 마우스 다운
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCoordinates(e.clientX, e.clientY);
+    if (coords) {
+      startDrawing(coords.x, coords.y);
+    }
+  };
+
+  // 터치 시작
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // 스크롤 방지
+    e.stopPropagation(); // 이벤트 전파 방지
+    if (e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const coords = getCoordinates(touch.clientX, touch.clientY);
+    if (coords) {
+      startDrawing(coords.x, coords.y);
+    }
+  };
+
+  // 그리기 이동 (마우스/터치 공통)
+  const moveDrawing = (x: number, y: number) => {
+    if (!isDrawing || !currentStroke || countdown === 0 || isCompletedRef.current) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
     const currentTime = Date.now();
 
     const ctx = canvas.getContext("2d");
@@ -344,8 +397,28 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
     }
   };
 
-  // 마우스 업
-  const handleMouseUp = () => {
+  // 마우스 이동
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCoordinates(e.clientX, e.clientY);
+    if (coords) {
+      moveDrawing(coords.x, coords.y);
+    }
+  };
+
+  // 터치 이동
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // 스크롤 방지
+    e.stopPropagation(); // 이벤트 전파 방지
+    if (e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const coords = getCoordinates(touch.clientX, touch.clientY);
+    if (coords) {
+      moveDrawing(coords.x, coords.y);
+    }
+  };
+
+  // 그리기 종료 (마우스/터치 공통)
+  const endDrawing = () => {
     if (isDrawing && currentStroke) {
       const newDrawing = [...drawing, [currentStroke.x, currentStroke.y]];
       setDrawing(newDrawing);
@@ -360,6 +433,18 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
     setIsDrawing(false);
   };
 
+  // 마우스 업
+  const handleMouseUp = () => {
+    endDrawing();
+  };
+
+  // 터치 종료
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    e.stopPropagation(); // 이벤트 전파 방지
+    endDrawing();
+  };
+
   // 지우개 기능: 모든 그림 지우기
   const handleClear = () => {
     if (isCompletedRef.current) return; // 완료되었으면 지우기 불가
@@ -371,6 +456,7 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
     setLastRecordedY(null);
     setLastRecordedTime(null);
     setIsDrawing(false);
+    setRealtimePrediction(null); // 실시간 예측 메시지도 초기화
     
     // canvas 지우기
     const canvas = canvasRef.current;
@@ -387,7 +473,7 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
     }
   };
 
-  // 캔버스 초기화
+  // 캔버스 초기화 및 크기 조정
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -395,13 +481,49 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // iOS Safari 호환성을 위한 터치 이벤트 리스너 추가
+    const preventScroll = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+
+    // 모바일/데스크톱에 따라 캔버스 크기 조정
+    if (isMobile) {
+      // 모바일: 화면 크기에 맞게 조정 (최대 너비 90%, 비율 유지)
+      const maxWidth = Math.min(window.innerWidth * 0.9, 400);
+      const maxHeight = Math.min(window.innerHeight * 0.5, 300);
+      canvas.width = maxWidth;
+      canvas.height = maxHeight;
+      canvas.style.width = `${maxWidth}px`;
+      canvas.style.height = `${maxHeight}px`;
+    } else {
+      // 데스크톱: 고정 크기
+      canvas.width = 800;
+      canvas.height = 600;
+      canvas.style.width = "800px";
+      canvas.style.height = "600px";
+    }
+
+    // iOS Safari 호환성을 위한 터치 이벤트 리스너 (passive: false로 설정)
+    canvas.addEventListener('touchstart', preventScroll, { passive: false });
+    canvas.addEventListener('touchmove', preventScroll, { passive: false });
+    canvas.addEventListener('touchend', preventScroll, { passive: false });
+    canvas.addEventListener('touchcancel', preventScroll, { passive: false });
+
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = isMobile ? 3 : 2; // 모바일에서는 조금 더 두껍게
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-  }, []);
+
+    return () => {
+      // 클린업: 이벤트 리스너 제거
+      canvas.removeEventListener('touchstart', preventScroll);
+      canvas.removeEventListener('touchmove', preventScroll);
+      canvas.removeEventListener('touchend', preventScroll);
+      canvas.removeEventListener('touchcancel', preventScroll);
+    };
+  }, [isMobile]);
 
   return (
     <div className="h-screen flex flex-col bg-black relative overflow-hidden">
@@ -409,45 +531,73 @@ export default function DrawingCanvas({ targetClass, onComplete }: DrawingCanvas
       <div className="relative z-10">
         <EventHeader />
       </div>
-      <div className="flex-1 flex items-center justify-center p-4 relative z-10">
-        <div className="w-full max-w-6xl">
+      <div className={`flex-1 flex items-center justify-center ${isMobile ? 'p-3 pt-20' : 'p-4'} relative z-10`}>
+        <div className={`w-full ${isMobile ? 'max-w-md' : 'max-w-6xl'}`}>
           {/* 카운트다운 표시 */}
-          <div className="text-center mb-4">
-            <div className="text-6xl font-bold text-white mb-2">
+          <div className={`text-center ${isMobile ? 'mb-3' : 'mb-4'}`}>
+            <div className={`${isMobile ? 'text-4xl' : 'text-6xl'} font-bold text-white ${isMobile ? 'mb-1' : 'mb-2'}`}>
               {countdown}초
             </div>
-            <div className="text-2xl text-gray-300">
+            <div className={`${isMobile ? 'text-base' : 'text-2xl'} text-gray-300`}>
               그려야 할 그림: <span className="text-primary font-bold">{CLASS_NAMES[targetClass] || targetClass}</span>
             </div>
           </div>
 
           {/* 지우개 버튼 */}
-          <div className="flex justify-center mb-4">
+          <div className={`flex justify-center ${isMobile ? 'mb-3' : 'mb-4'}`}>
             <Button
               onClick={handleClear}
               variant="default"
-              size="lg"
-              className="h-12 px-6 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+              size={isMobile ? "default" : "lg"}
+              className={`${isMobile ? 'h-10 px-4 text-sm' : 'h-12 px-6 text-lg'} font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg ${isMobile ? 'w-full' : ''}`}
               disabled={isCompletedRef.current || countdown === 0}
             >
-              <Eraser className="w-5 h-5 mr-2" />
+              <Eraser className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} mr-2`} />
               지우개
             </Button>
           </div>
 
           {/* 캔버스 */}
-          <div className="flex justify-center">
+          <div className="flex justify-center" style={{ touchAction: 'none' }}>
             <canvas
               ref={canvasRef}
-              width={800}
-              height={600}
-              className="border-4 border-primary rounded-lg cursor-crosshair bg-white"
+              className={`${isMobile ? 'border-2' : 'border-4'} border-primary rounded-lg ${isMobile ? '' : 'cursor-crosshair'} bg-white`}
+              style={{ touchAction: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchEnd}
             />
           </div>
+
+          {/* 실시간 예측 결과 표시 */}
+          {realtimePrediction && !isCompletedRef.current && (
+            <div className={`${isMobile ? 'mt-4' : 'mt-6'} flex justify-center`}>
+              <div className={`bg-gray-900/95 border border-primary/30 rounded-xl ${isMobile ? 'px-4 py-3' : 'px-6 py-4'} shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300`}>
+                {realtimePrediction.confidence === 0 || Math.round(realtimePrediction.confidence * 100) === 0 ? (
+                  <p className={`${isMobile ? 'text-sm' : 'text-xl'} text-gray-400 text-center`}>
+                    이게 뭔지 모르겠어요...
+                  </p>
+                ) : (
+                  <p className={`${isMobile ? 'text-sm' : 'text-xl'} text-white text-center`}>
+                    아 지금{" "}
+                    <span className="text-primary font-bold">
+                      {CLASS_NAMES[realtimePrediction.predictedClass] || realtimePrediction.predictedClass}
+                    </span>
+                    와{" "}
+                    <span className="text-primary font-bold">
+                      {Math.round(realtimePrediction.confidence * 100)}%
+                    </span>
+                    비슷하네요
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <div className="relative z-10">

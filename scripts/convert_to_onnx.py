@@ -15,8 +15,8 @@ def convert_to_onnx():
     Opset 버전: 17
     """
     # 모델 경로 설정
-    keras_model_path = "models/quickdraw_rnn_10classes.keras"
-    onnx_model_path = "models/quickdraw_rnn_10classes.onnx"
+    keras_model_path = "models/quickdraw_rnn_10classes_v2.keras"
+    onnx_model_path = "models/quickdraw_rnn_10classes_v2.onnx"
     
     # 모델 디렉토리 확인
     if not os.path.exists(keras_model_path):

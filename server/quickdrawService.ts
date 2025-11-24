@@ -33,7 +33,7 @@ export async function predictDrawing(
     const scriptPath = pathResolve(projectRoot, "predict_api.py");
     // 카테고리 수에 맞는 모델 파일 자동 선택
     const numClasses = CATEGORIES.length;
-    const onnxModelPath = pathResolve(projectRoot, "models", `quickdraw_rnn_${numClasses}classes.onnx`);
+    const onnxModelPath = pathResolve(projectRoot, "models", `quickdraw_rnn_${numClasses}classes_v2.onnx`);
     
     // Python 명령어 (conda 환경 또는 기본 python)
     const pythonCommand = process.env.PYTHON_PATH || "python";

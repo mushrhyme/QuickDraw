@@ -39,7 +39,12 @@ export default function DrawingGuide({ onStart }: DrawingGuideProps) {
                 시작하기 버튼을 누르면 제시어가 랜덤으로 나옵니다.
               </p>
             </div>
-
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className={`${isMobile ? 'w-5 h-5' : 'w-8 h-8'} text-primary flex-shrink-0 mt-1`} />
+              <p className={`${isMobile ? 'text-sm' : 'text-3xl'} text-gray-300 text-left`}>
+                제시어만 단독으로 그려야 인식이 잘 됩니다. (예: "새"일 경우 새만, 구름이나 배경은 제외)
+              </p>
+            </div>
             <div className="flex items-start gap-3">
               <CheckCircle2 className={`${isMobile ? 'w-5 h-5' : 'w-8 h-8'} text-primary flex-shrink-0 mt-1`} />
               <p className={`${isMobile ? 'text-sm' : 'text-3xl'} text-gray-300 text-left`}>

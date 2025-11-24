@@ -1,17 +1,15 @@
 {
-  "categories": ["cat", "dog", "airplane", "car", "bird", "fan", "fire hydrant", "horse", "elephant", "donut"],
+  "categories": ["cat", "dog", "airplane", "car", "bird", "donut", "horse", "elephant", "fan", "fire hydrant"],
   "categoryNames": {
     "cat": "고양이",
     "dog": "강아지",
     "airplane": "비행기",
     "car": "자동차",
     "bird": "새",
-    "fan": "선풍기",
-    "fire hydrant": "소화전",
+    "donut": "도넛",
     "horse": "말",
     "elephant": "코끼리",
-    "donut": "도넛"
-  },
-  "activeCategories": null,
-  "_comment": "activeCategories를 수정하여 특정 카테고리만 사용할 수 있습니다. 예: [\"cat\", \"dog\", \"airplane\"] 또는 null (전체 사용)"
+    "fan": "선풍기",
+    "fire hydrant": "소화전"
+  }
 }

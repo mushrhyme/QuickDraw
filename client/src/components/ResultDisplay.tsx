@@ -25,6 +25,26 @@ const CLASS_NAMES = CATEGORY_NAMES;
 
 const MAX_DRAWING_TIME = 20; // 최대 그림 그리기 시간 (초)
 
+// 한국어 조사 선택 함수 (받침 유무에 따라 "와/과" 선택)
+const getKoreanParticle = (word: string): string => {
+  if (!word) return "와";
+  
+  // 한글 유니코드 범위: AC00-D7A3
+  const lastChar = word[word.length - 1];
+  const lastCharCode = lastChar.charCodeAt(0);
+  
+  // 한글이 아니면 기본값 "와" 반환
+  if (lastCharCode < 0xAC00 || lastCharCode > 0xD7A3) {
+    return "와";
+  }
+  
+  // 받침 유무 확인: (유니코드 - 0xAC00) % 28
+  // 0이면 받침 없음, 0이 아니면 받침 있음
+  const hasFinalConsonant = (lastCharCode - 0xAC00) % 28 !== 0;
+  
+  return hasFinalConsonant ? "과" : "와";
+};
+
 export default function ResultDisplay({
   targetClass,
   predictedClass,
@@ -89,7 +109,25 @@ export default function ResultDisplay({
           throw new Error(data.error || "결과 저장 실패");
         }
 
-        console.log("결과가 구글 시트에 저장되었습니다.");
+        // 콘솔 로그: 결과 저장 성공 정보
+        console.log("=".repeat(60));
+        console.log("✅ 결과 저장 성공");
+        console.log("=".repeat(60));
+        console.log("사용자 정보:", {
+          회사명: user.company,
+          사번: user.employeeId,
+          이름: user.name,
+          부서: user.department || "N/A",
+        });
+        console.log("그림 정보:", {
+          목표_카테고리: `${targetClass} (${CLASS_NAMES[targetClass] || targetClass})`,
+          예측_카테고리: `${predictedClass || "예측 불가"} ${predictedClass ? `(${CLASS_NAMES[predictedClass] || predictedClass})` : ""}`,
+          유사도: `${(confidence * 100).toFixed(1)}%`,
+          그리기_시간: `${drawingTime}초`,
+          성공_여부: success ? "✅ 성공" : "❌ 실패",
+        });
+        console.log("완료 시간:", completedAt);
+        console.log("=".repeat(60));
       } catch (error) {
         console.error("결과 저장 오류:", error);
         setSaveError(error instanceof Error ? error.message : "결과 저장 중 오류가 발생했습니다.");
@@ -179,7 +217,7 @@ export default function ResultDisplay({
               <div className={`${isMobile ? 'pt-3 pb-3' : 'pt-4 pb-4'} text-center ${isMobile ? 'space-y-1' : 'space-y-2'}`}>
                 <p className={`${isMobile ? 'text-sm' : 'text-2xl'} text-gray-300`}>예측 결과</p>
                 <p className={`${isMobile ? 'text-2xl' : 'text-4xl'} font-bold text-primary`}>
-                  {CLASS_NAMES[predictedClass] || predictedClass}
+                  {predictedClass ? (CLASS_NAMES[predictedClass] || predictedClass) : "???"}
                 </p>
               </div>
             </Card>
@@ -190,12 +228,21 @@ export default function ResultDisplay({
             <Card className="border-2 border-gray-700 bg-gray-900/90">
               <div className={`${isMobile ? 'pt-3 pb-3' : 'pt-4 pb-4'} text-center ${isMobile ? 'space-y-1' : 'space-y-2'}`}>
                 <div className={isMobile ? "space-y-1" : "space-y-1"}>
-                  <p className={`${isMobile ? 'text-sm' : 'text-2xl'} font-bold text-white`}>
-                    {CLASS_NAMES[predictedClass] || predictedClass}와
-                  </p>
-                  <p className={`${isMobile ? 'text-2xl' : 'text-4xl'} font-bold text-primary`}>
-                    {(confidence * 100).toFixed(1)}% 유사
-                  </p>
+                  {predictedClass ? (
+                    <>
+                      <p className={`${isMobile ? 'text-sm' : 'text-2xl'} font-bold text-white`}>
+                        {CLASS_NAMES[predictedClass] || predictedClass}
+                        {getKoreanParticle(CLASS_NAMES[predictedClass] || predictedClass)}
+                      </p>
+                      <p className={`${isMobile ? 'text-2xl' : 'text-4xl'} font-bold text-primary`}>
+                        {(confidence * 100).toFixed(1)}% 유사
+                      </p>
+                    </>
+                  ) : (
+                    <p className={`${isMobile ? 'text-lg' : 'text-3xl'} font-bold text-gray-400`}>
+                      예측 불가
+                    </p>
+                  )}
                 </div>
               </div>
             </Card>

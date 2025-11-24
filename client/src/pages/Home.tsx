@@ -80,7 +80,7 @@ export default function Home() {
       )}
 
       {step === "drawing" && targetClass && (
-        <DrawingCanvas targetClass={targetClass} onComplete={handleDrawingComplete} />
+        <DrawingCanvas targetClass={targetClass} user={user} onComplete={handleDrawingComplete} />
       )}
 
       {step === "result" && result && targetClass && (

@@ -3,7 +3,8 @@ import { predictDrawing } from "./quickdrawService.js";
 import { storage } from "./storage.js";
 import { GoogleSheetsService } from "./googleSheets.js";
 import { quickDrawResultSchema } from "../shared/schema.js";
-import { formatKSTDateTime, getErrorMessage } from "../shared/utils.js";
+import { getErrorMessage } from "../shared/utils.js";
+import { CATEGORY_NAMES } from "../shared/categories.js";
 
 const router = Router();
 
@@ -30,8 +31,29 @@ router.post("/user", async (req, res) => {
     const user = await storage.getUserByCompanyAndEmployeeId(company, employeeId);
 
     if (!user) {
+      console.log("=".repeat(60));
+      console.log("❌ 로그인 실패: 사용자를 찾을 수 없습니다");
+      console.log("=".repeat(60));
+      console.log("회사명:", company);
+      console.log("사번:", employeeId);
+      console.log("=".repeat(60));
       return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
     }
+
+    // 콘솔 로그: 로그인 성공 정보
+    console.log("=".repeat(60));
+    console.log("✅ 로그인 성공");
+    console.log("=".repeat(60));
+    console.log("회사명:", company);
+    console.log("사번:", employeeId);
+    console.log("사용자 정보:", {
+      id: user.id,
+      name: user.name || "N/A",
+      company: user.company || company,
+      employeeId: user.employeeId || employeeId,
+      department: user.department || "N/A",
+    });
+    console.log("=".repeat(60));
 
     res.json(user);
   } catch (error) {
@@ -61,8 +83,31 @@ router.post("/save-result", async (req, res) => {
     }
 
     const data = validationResult.data;
+    
+    // 콘솔 로그: 결과 저장 시작
+    console.log("=".repeat(60));
+    console.log("💾 결과 저장 시작");
+    console.log("=".repeat(60));
+    console.log("사용자 정보:", {
+      회사명: data.company,
+      사번: data.employeeId,
+      이름: data.name,
+      부서: data.department || "N/A",
+    });
+    console.log("그림 정보:", {
+      목표_카테고리: `${data.targetClass} (${CATEGORY_NAMES[data.targetClass] || data.targetClass})`,
+      예측_카테고리: data.predictedClass ? `${data.predictedClass} (${CATEGORY_NAMES[data.predictedClass] || data.predictedClass})` : "예측 불가",
+      유사도: `${(data.confidence * 100).toFixed(1)}%`,
+      그리기_시간: `${data.drawingTime.toFixed(1)}초`,
+      성공_여부: data.predictedClass === data.targetClass && data.confidence >= 0.5 ? "✅ 성공" : "❌ 실패",
+    });
+    console.log("완료 시간:", data.completedAt);
+    
     // 구글 시트에 저장
     await googleSheetsService.saveQuickDrawResult(data);
+
+    console.log("✅ 결과 저장 완료");
+    console.log("=".repeat(60));
 
     res.json({ success: true, message: "결과가 저장되었습니다." });
   } catch (error: any) {
@@ -84,13 +129,24 @@ router.post("/save-result", async (req, res) => {
 
 router.post("/predict", async (req, res) => {
   try {
-    const { drawing } = req.body;
+    const { drawing, user } = req.body;
 
     if (!drawing || !Array.isArray(drawing)) {
       return res.status(400).json({ error: "Invalid drawing data" });
     }
 
+    // 사용자 정보가 있으면 로그 출력
+    if (user) {
+      console.log(`🎨 예측 요청 [${user.name || user.employeeId} (${user.company})]`);
+    }
+
     const result = await predictDrawing(drawing);
+    
+    // 예측 결과와 함께 사용자 정보 로그 출력
+    if (user) {
+      console.log(`   → 예측: ${result.predictedClass} (${(result.confidence * 100).toFixed(1)}%)`);
+    }
+    
     res.json(result);
   } catch (error) {
     console.error("예측 오류:", error);

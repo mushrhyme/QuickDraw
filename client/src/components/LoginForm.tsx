@@ -91,6 +91,20 @@ export default function LoginForm({ onSubmit, onUserFound }: LoginFormProps) {
 
       const user = await response.json();
       
+      // 콘솔 로그: 로그인 성공 정보
+      console.log("=".repeat(60));
+      console.log("✅ 로그인 성공");
+      console.log("=".repeat(60));
+      console.log("회사명:", company);
+      console.log("사번:", employeeId);
+      console.log("사용자 정보:", {
+        name: user.name || "N/A",
+        company: user.company || company,
+        employeeId: user.employeeId || employeeId,
+        department: user.department || "N/A",
+      });
+      console.log("=".repeat(60));
+      
       // 사용자 정보를 부모 컴포넌트에 전달
       if (onUserFound) {
         onUserFound(user);
@@ -121,7 +135,7 @@ export default function LoginForm({ onSubmit, onUserFound }: LoginFormProps) {
             </div>
             <div className={`flex items-center justify-center ${isMobile ? 'gap-1 mt-3' : 'gap-3 mt-6'}`}>
               <span className={`${isMobile ? 'text-2xl' : 'text-6xl'} font-bold text-primary leading-none`}>[</span>
-              <h1 className={`${isMobile ? 'text-2xl' : 'text-6xl'} font-semibold text-white`}>AI가 내 그림을 바로 알아볼까?</h1>
+              <h1 className={`${isMobile ? 'text-2xl' : 'text-6xl'} font-semibold text-white`}>AI가 보는 내 그림 실력</h1>
               <span className={`${isMobile ? 'text-2xl' : 'text-6xl'} font-bold text-primary leading-none`}>]</span>
             </div>
             <p className={`${isMobile ? 'text-base' : 'text-2xl'} text-gray-300 ${isMobile ? 'mt-3' : 'mt-6'} min-h-[2.5rem]`}>

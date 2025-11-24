@@ -57,6 +57,7 @@ models/*.keras
 models/*.onnx
 models/*.h5
 models/*.pb
+models/
 
 # 임시 파일
 *.tmp
