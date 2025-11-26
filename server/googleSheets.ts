@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import type { QuickDrawResult } from "../shared/schema";
+import type { QuickDrawResult, RankingData } from "../shared/schema";
 import { getErrorMessage } from "../shared/utils";
 import { CATEGORY_NAMES } from "../shared/categories";
 
@@ -158,6 +158,126 @@ export class GoogleSheetsService {
     } catch (error) {
       // 시트가 비어있거나 접근 오류인 경우 헤더 추가 시도
       console.warn("헤더 확인 중 오류 (무시하고 계속 진행):", error);
+    }
+  }
+
+  /**
+   * 구글 시트에서 랭킹 데이터 조회
+   * 그림 그리는 시간 기준으로 오름차순 정렬 (빠른 순서대로)
+   * 
+   * @returns 랭킹 데이터 배열
+   */
+  async getRankingData(): Promise<RankingData[]> {
+    try {
+      // 전체 데이터 읽기 (헤더 포함)
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: "A:I", // A열부터 I열까지 전체
+      });
+
+      const rows = response.data.values;
+
+      // 데이터가 없으면 빈 배열 반환
+      if (!rows || rows.length <= 1) {
+        return [];
+      }
+
+      // 헤더 제외하고 데이터만 추출
+      const dataRows = rows.slice(1);
+
+      // 데이터 파싱
+      const parsedData = dataRows
+        .map((row: any[], index: number) => {
+          try {
+            // 행 데이터 추출
+            const company = row[0] || ""; // 회사
+            const employeeId = row[1] || ""; // 사번
+            const name = row[2] || ""; // 이름
+            const department = row[3] || ""; // 부서명
+            const targetClass = row[4] || ""; // 목표 그림 (한글)
+            const drawingTimeStr = row[7] || ""; // 소요 시간 (예: "10.5초")
+            const completedAt = row[8] || ""; // 완료 시각
+
+            // 소요 시간 파싱 ("10.5초" -> 10.5)
+            let drawingTime = 0;
+            if (drawingTimeStr) {
+              const timeStr = String(drawingTimeStr).replace("초", "").trim();
+              const parsed = parseFloat(timeStr);
+              if (!isNaN(parsed) && parsed > 0) {
+                drawingTime = parsed;
+              }
+            }
+
+            // 필수 필드 검증
+            if (!company || !employeeId || !name || !targetClass || drawingTime <= 0) {
+              return null;
+            }
+
+            // completedAt에서 작은따옴표 제거 (텍스트로 저장된 경우)
+            let cleanCompletedAt = String(completedAt);
+            if (cleanCompletedAt.startsWith("'")) {
+              cleanCompletedAt = cleanCompletedAt.substring(1);
+            }
+
+            return {
+              company,
+              employeeId,
+              name,
+              department: department || "",
+              targetClass,
+              drawingTime,
+              completedAt: cleanCompletedAt,
+            };
+          } catch (error) {
+            console.warn(`행 ${index + 2} 파싱 실패:`, error);
+            return null;
+          }
+        })
+        .filter((item): item is RankingData => item !== null);
+
+      // 회사와 사번을 기준으로 중복 제거 (가장 최근에 그린 것만 선택)
+      const uniqueMap = new Map<string, RankingData>();
+      for (const item of parsedData) {
+        const key = `${item.company}|${item.employeeId}`; // 회사와 사번을 키로 사용
+        const existing = uniqueMap.get(key);
+        
+        if (!existing) {
+          // 해당 키가 없으면 추가
+          uniqueMap.set(key, item);
+        } else {
+          // 이미 존재하면 completedAt을 비교하여 더 최근 것을 선택
+          // completedAt은 "YYYY-MM-DD HH:MM:SS" 형식으로 가정
+          if (item.completedAt > existing.completedAt) {
+            uniqueMap.set(key, item);
+          }
+        }
+      }
+
+      // Map에서 배열로 변환
+      const uniqueData = Array.from(uniqueMap.values());
+
+      // 그림 그리는 시간 기준 오름차순 정렬 (빠른 순서대로)
+      uniqueData.sort((a, b) => {
+        // 1순위: 소요 시간 오름차순 (빠른 순서)
+        if (a.drawingTime !== b.drawingTime) {
+          return a.drawingTime - b.drawingTime;
+        }
+        // 2순위: 완료 시각 오름차순 (빠른 순서)
+        return a.completedAt.localeCompare(b.completedAt);
+      });
+
+      return uniqueData;
+    } catch (error: any) {
+      console.error("❌ 랭킹 데이터 조회 실패:");
+      console.error("에러 타입:", error?.constructor?.name);
+      console.error("에러 메시지:", error?.message);
+      if (error?.response) {
+        console.error("API 응답 상태:", error.response.status);
+        console.error("API 응답 데이터:", error.response.data);
+      }
+      // 구글 시트 서비스 관련 에러임을 명시
+      const errorMessage = error?.message || String(error);
+      throw new Error(`구글 시트 서비스 오류: ${errorMessage}`);
     }
   }
 }
