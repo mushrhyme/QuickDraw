@@ -41,9 +41,14 @@ export default function DrawingGuide({ onStart }: DrawingGuideProps) {
             </div>
             <div className="flex items-start gap-3">
               <CheckCircle2 className={`${isMobile ? 'w-5 h-5' : 'w-8 h-8'} text-primary flex-shrink-0 mt-1`} />
-              <p className={`${isMobile ? 'text-sm' : 'text-3xl'} text-gray-300 text-left`}>
-                제시어만 단독으로 그려야 인식이 잘 됩니다. (예: "새"일 경우 새만, 구름이나 배경은 제외)
-              </p>
+              <div className="flex-1">
+                <p className={`${isMobile ? 'text-sm' : 'text-3xl'} text-gray-300 text-left`}>
+                  제시어만 단독으로 그려야 인식이 잘 됩니다.
+                </p>
+                <p className={`${isMobile ? 'text-xs' : 'text-2xl'} text-gray-400 text-left ${isMobile ? 'mt-2 ml-0' : 'mt-4 ml-4'}`}>
+                  예) "새"일 경우 구름이나 배경은 제외하고 새를 그려야 합니다.
+                </p>
+              </div>
             </div>
             <div className="flex items-start gap-3">
               <CheckCircle2 className={`${isMobile ? 'w-5 h-5' : 'w-8 h-8'} text-primary flex-shrink-0 mt-1`} />
