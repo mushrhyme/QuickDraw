@@ -33,7 +33,7 @@ if len(sys.argv) >= 2:
 if not onnx_model_path:
     # 카테고리 수에 맞는 모델 파일 자동 선택
     num_classes = len(CATEGORIES)
-    default_model = f"models/quickdraw_rnn_{num_classes}classes_v2.onnx"
+    default_model = f"models/quickdraw_rnn_{num_classes}classes_strict.onnx"
     onnx_model_path = os.getenv("ONNX_MODEL_PATH", default_model)
 
 # 절대 경로로 변환 (상대 경로인 경우)

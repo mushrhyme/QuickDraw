@@ -42,3 +42,16 @@ export const quickDrawResultSchema = z.object({
 
 export type QuickDrawResult = z.infer<typeof quickDrawResultSchema>;
 
+// 랭킹 데이터 스키마 정의
+export const rankingDataSchema = z.object({
+  company: z.string(),
+  employeeId: z.string(),
+  name: z.string(),
+  department: z.string(),
+  targetClass: z.string(), // 목표 그림
+  drawingTime: z.number().positive(), // 소요 시간 (초)
+  completedAt: z.string(), // 완료 시각
+});
+
+export type RankingData = z.infer<typeof rankingDataSchema>;
+

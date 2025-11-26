@@ -99,7 +99,7 @@ router.post("/save-result", async (req, res) => {
       예측_카테고리: data.predictedClass ? `${data.predictedClass} (${CATEGORY_NAMES[data.predictedClass] || data.predictedClass})` : "예측 불가",
       유사도: `${(data.confidence * 100).toFixed(1)}%`,
       그리기_시간: `${data.drawingTime.toFixed(1)}초`,
-      성공_여부: data.predictedClass === data.targetClass && data.confidence >= 0.5 ? "✅ 성공" : "❌ 실패",
+      성공_여부: data.predictedClass === data.targetClass && data.confidence >= 0.8 ? "✅ 성공" : "❌ 실패",
     });
     console.log("완료 시간:", data.completedAt);
     
@@ -153,6 +153,44 @@ router.post("/predict", async (req, res) => {
     res.status(500).json({ error: "예측 실패" });
   }
 });
+
+/**
+ * 랭킹 데이터 조회 API
+ * 그림 그리는 시간 기준으로 정렬된 랭킹 데이터를 반환합니다.
+ */
+router.get("/ranking", async (req, res) => {
+  console.log("📊 랭킹 데이터 조회 요청 받음");
+  try {
+    if (!googleSheetsService) {
+      console.warn("⚠️ 구글 시트 서비스가 설정되지 않음");
+      return res.status(503).json({ 
+        error: "구글 시트 서비스가 설정되지 않았습니다.",
+        details: "랭킹 데이터를 조회할 수 없습니다."
+      });
+    }
+
+    console.log("📊 랭킹 데이터 조회 시작...");
+    const rankingData = await googleSheetsService.getRankingData();
+    console.log(`✅ 랭킹 데이터 조회 완료: ${rankingData.length}개 항목`);
+    res.json(rankingData);
+  } catch (error: any) {
+    console.error("❌ 랭킹 데이터 조회 실패:");
+    console.error("에러:", error);
+    if (error?.message) {
+      console.error("에러 메시지:", error.message);
+    }
+    
+    // 구글 시트 서비스 관련 에러는 503 반환
+    const statusCode = error?.message?.includes("구글 시트 서비스") ? 503 : 500;
+    res.status(statusCode).json({ 
+      error: error?.message || "랭킹 데이터 조회 중 오류가 발생했습니다.",
+      details: error?.message || String(error)
+    });
+  }
+});
+
+// 라우트 등록 확인 로그
+console.log("✅ /api/ranking GET 라우트 등록됨");
 
 export default router;
 

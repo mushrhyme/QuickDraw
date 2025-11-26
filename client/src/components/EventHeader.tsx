@@ -2,7 +2,7 @@
 export default function EventHeader() {
   return (
     <header className="absolute top-2 left-0 right-0 z-50 px-4 py-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 justify-end">
         <img 
           src="/dt-fair.png" 
           alt="DT FAIR 2025" 
