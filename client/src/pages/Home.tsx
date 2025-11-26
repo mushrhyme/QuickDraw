@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Step, LoginInfo } from "@shared/types";
 import LoginForm from "@/components/LoginForm";
+import WelcomeScreen from "@/components/WelcomeScreen";
 import DrawingGuide from "@/components/DrawingGuide";
 import ClassGuide from "@/components/ClassGuide";
 import DrawingCanvas from "@/components/DrawingCanvas";
@@ -37,6 +38,10 @@ export default function Home() {
 
   const handleLogin = (company: string, employeeId: string) => {
     setLoginInfo({ company, employeeId });
+    setStep("welcome");
+  };
+
+  const handleWelcomeContinue = () => {
     setStep("guide");
   };
 
@@ -72,6 +77,10 @@ export default function Home() {
   return (
     <>
       {step === "login" && <LoginForm onSubmit={handleLogin} onUserFound={handleUserFound} />}
+
+      {step === "welcome" && user && (
+        <WelcomeScreen name={user.name} onContinue={handleWelcomeContinue} />
+      )}
 
       {step === "guide" && <DrawingGuide onStart={handleGuideStart} />}
 

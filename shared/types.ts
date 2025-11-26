@@ -1,4 +1,4 @@
-export type Step = "login" | "guide" | "classGuide" | "drawing" | "result";
+export type Step = "login" | "welcome" | "guide" | "classGuide" | "drawing" | "result";
 
 export interface LoginInfo {
   company: string;
