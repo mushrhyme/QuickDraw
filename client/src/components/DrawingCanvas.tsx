@@ -25,7 +25,7 @@ interface DrawingCanvasProps {
 const MIN_DISTANCE = 12;
 const MIN_TIME_INTERVAL = 30;
 const STROKE_TIMEOUT = 200;
-const PREDICTION_THRESHOLD = 0.8;
+const PREDICTION_THRESHOLD = 0.8; // 유사도 기준: 80%
 const COUNTDOWN_SECONDS = 20;
 
 const CLASS_NAMES = CATEGORY_NAMES;
@@ -66,8 +66,11 @@ export default function DrawingCanvas({ targetClass, user, onComplete }: Drawing
       const endTime = Date.now();
       const actualTime = startTime ? (endTime - startTime) / 1000 : COUNTDOWN_SECONDS;
       
-      // handleComplete에 실제 시간 전달을 위해 수정 필요
-      handleComplete(actualTime);
+      // 20초 제한 적용
+      const limitedTime = Math.min(actualTime, COUNTDOWN_SECONDS);
+      
+      // handleComplete에 제한된 시간 전달
+      handleComplete(limitedTime);
       return;
     }
 
@@ -133,7 +136,10 @@ export default function DrawingCanvas({ targetClass, user, onComplete }: Drawing
           }
 
           // 실제 그림 그리기 시작 시간부터 현재까지의 시간 측정
-          const drawingTime = startTime ? (Date.now() - startTime) / 1000 : 0;
+          const rawDrawingTime = startTime ? (Date.now() - startTime) / 1000 : 0;
+          
+          // 20초 제한 적용
+          const drawingTime = Math.min(rawDrawingTime, COUNTDOWN_SECONDS);
           
           // 정확도 값 정규화 (0-1 범위 보장)
           const finalConfidence = Math.min(1.0, Math.max(0.0, result.confidence));
@@ -229,9 +235,12 @@ export default function DrawingCanvas({ targetClass, user, onComplete }: Drawing
       : drawing;
 
     // 시간 측정: 제공된 시간이 있으면 사용, 없으면 현재 시간 기준
-    const drawingTime = providedTime !== undefined 
+    const rawDrawingTime = providedTime !== undefined 
       ? providedTime 
       : (startTime ? (Date.now() - startTime) / 1000 : COUNTDOWN_SECONDS);
+    
+    // 20초 제한 적용 (무조건 20초 이하로 제한)
+    const drawingTime = Math.min(rawDrawingTime, COUNTDOWN_SECONDS);
 
     if (finalDrawing.length === 0) {
       const canvas = canvasRef.current;
