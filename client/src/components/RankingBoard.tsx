@@ -221,7 +221,7 @@ export default function RankingBoard() {
                     <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900`}>참여 안내</h3>
                   </div>
                   <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-normal leading-relaxed text-gray-700`}>
-                  그림을 그리면 <span className="font-semibold text-[#26bfa6]">1인 1회 참여</span>로<br/>자동 집계되며, 중복 참여는 불가합니다.
+                  <span className="font-semibold text-[#26bfa6]">1인 1회 참여</span>로 자동 집계되며, <br/>중복 참여는 불가합니다.
                   </p>
                 </div>
                 {/* 카드 2: 1등 선물 */}
@@ -233,7 +233,7 @@ export default function RankingBoard() {
                     <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900`}>랭킹보드 이벤트</h3>
                   </div>
                   <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-normal leading-relaxed text-gray-700`}>
-                    시간이 가장 빠른 <span className="font-bold text-[#26bfa6]">1명</span>에게<br />
+                    가장 빨리 그림을 그린 <span className="font-bold text-[#26bfa6]">1명</span>에게<br />
                     <span className="font-bold text-[#26bfa6]">백산수 한정판 굿즈 키트</span>를 드립니다!
                   </p>
                 </div>

@@ -4,3 +4,4 @@ export default function RankingPage() {
   return <RankingBoard />;
 }
 
+

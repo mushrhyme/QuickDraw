@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Eraser } from "lucide-react";
 import { CATEGORY_NAMES } from "@shared/categories";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { soundManager, SOUNDS } from "@/lib/sound";
 import type { User } from "@shared/types";
 
 interface DrawingCanvasProps {
@@ -49,6 +50,21 @@ export default function DrawingCanvas({ targetClass, user, onComplete }: Drawing
     predictedClass: string;
     confidence: number;
   } | null>(null); // 실시간 예측 결과
+  const countdownAudioRefs = useRef<HTMLAudioElement[]>([]); // 카운트다운 효과음 오디오 객체 추적
+  const gameBackgroundAudioRef = useRef<HTMLAudioElement | null>(null); // game 배경음악 오디오 객체 추적
+
+  // 컴포넌트 마운트 시 game 배경음악 시작
+  useEffect(() => {
+    // 오디오 컨텍스트 활성화 후 배경음악 재생
+    soundManager.activateAudioContext().then(() => {
+      if (!gameBackgroundAudioRef.current) {
+        const audio = soundManager.playBackground(SOUNDS.GAME, 0.5); // game 배경음악
+        if (audio) {
+          gameBackgroundAudioRef.current = audio;
+        }
+      }
+    });
+  }, []);
 
   // 카운트다운 및 시간 측정
   useEffect(() => {
@@ -74,6 +90,29 @@ export default function DrawingCanvas({ targetClass, user, onComplete }: Drawing
       return;
     }
 
+    // 마지막 5초일 때: game 배경음악 정지하고 카운트다운 효과음 재생
+    if (countdown <= 5 && countdown > 0) {
+      // game 배경음악 정지
+      if (gameBackgroundAudioRef.current && !gameBackgroundAudioRef.current.paused) {
+        gameBackgroundAudioRef.current.pause();
+      }
+      
+      // 카운트다운 효과음 재생
+      soundManager.activateAudioContext().then(() => {
+        const audio = soundManager.play(SOUNDS.COUNTDOWN, 0.6); // 카운트다운 효과음
+        if (audio) {
+          countdownAudioRefs.current.push(audio); // 재생 중인 오디오 추적
+        }
+      });
+    } else if (countdown > 5) {
+      // 5초 초과일 때: game 배경음악 재생 (정지되어 있었다면 다시 재생)
+      if (gameBackgroundAudioRef.current && gameBackgroundAudioRef.current.paused) {
+        gameBackgroundAudioRef.current.play().catch(() => {
+          // 재생 실패 시 무시
+        });
+      }
+    }
+
     const timer = setInterval(() => {
       // 완료되었는지 다시 확인
       if (isCompletedRef.current) {
@@ -85,6 +124,26 @@ export default function DrawingCanvas({ targetClass, user, onComplete }: Drawing
 
     return () => clearInterval(timer);
   }, [countdown, startTime]);
+
+  // 컴포넌트 언마운트 시 모든 오디오 정지
+  useEffect(() => {
+    return () => {
+      // game 배경음악 정지
+      if (gameBackgroundAudioRef.current) {
+        gameBackgroundAudioRef.current.pause();
+        gameBackgroundAudioRef.current.currentTime = 0;
+      }
+      
+      // 모든 재생 중인 카운트다운 효과음 정지
+      countdownAudioRefs.current.forEach((audio) => {
+        if (audio && !audio.paused) {
+          audio.pause();
+          audio.currentTime = 0;
+        }
+      });
+      countdownAudioRefs.current = []; // 배열 초기화
+    };
+  }, []);
 
   // 실시간 예측 (디바운싱)
   const predictDrawing = useCallback(async (drawingData: number[][][]) => {
@@ -314,6 +373,9 @@ export default function DrawingCanvas({ targetClass, user, onComplete }: Drawing
   // 그리기 시작 (마우스/터치 공통)
   const startDrawing = (x: number, y: number) => {
     if (countdown === 0 || isCompletedRef.current) return;
+
+    // 사파리 등 브라우저 호환성을 위해 오디오 컨텍스트 활성화
+    soundManager.activateAudioContext();
 
     // 이전 스트로크가 일정 시간 지나면 자동으로 끊기
     if (lastStrokeTime && Date.now() - lastStrokeTime > STROKE_TIMEOUT && currentStroke) {
@@ -584,10 +646,14 @@ export default function DrawingCanvas({ targetClass, user, onComplete }: Drawing
           </div>
 
           {/* 실시간 예측 결과 표시 */}
-          {realtimePrediction && !isCompletedRef.current && (
+          {!isCompletedRef.current && (
             <div className={`${isMobile ? 'mt-4' : 'mt-6'} flex justify-center`}>
               <div className={`bg-gray-900/95 border border-primary/30 rounded-xl ${isMobile ? 'px-4 py-3' : 'px-6 py-4'} shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300`}>
-                {realtimePrediction.confidence === 0 || Math.round(realtimePrediction.confidence * 100) === 0 ? (
+                {!realtimePrediction ? (
+                  <p className={`${isMobile ? 'text-sm' : 'text-xl'} text-gray-300 text-center`}>
+                    그림을 그려보세요~
+                  </p>
+                ) : realtimePrediction.confidence === 0 || Math.round(realtimePrediction.confidence * 100) === 0 ? (
                   <p className={`${isMobile ? 'text-sm' : 'text-xl'} text-gray-400 text-center`}>
                     이게 뭔지 모르겠어요...
                   </p>

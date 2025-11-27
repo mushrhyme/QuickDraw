@@ -6,9 +6,12 @@ import Footer from "@/components/Footer";
 import EventHeader from "@/components/EventHeader";
 import MatrixBackground from "@/components/MatrixBackground";
 import { useSuccessConfetti } from "@/hooks/useSuccessConfetti";
+import { useOlderRipple } from "@/hooks/useOlderRipple";
+import { soundManager, SOUNDS } from "@/lib/sound";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { User } from "@shared/types";
 import { CATEGORY_NAMES } from "@shared/categories";
+import confetti from "canvas-confetti";
 
 interface ResultDisplayProps {
   targetClass: string;
@@ -58,8 +61,35 @@ export default function ResultDisplay({
   const isMobile = useIsMobile(); // 모바일 레이아웃 감지
   // 성공 시 폭죽 효과
   useSuccessConfetti(success);
+  // 실패 시 리플 효과 (쿠궁)
+  useOlderRipple(!success);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>("");
+
+  // 결과에 따른 음향 효과 재생 (크롬 최적화, 전체 재생 보장)
+  useEffect(() => {
+    // 크롬: 오디오 컨텍스트 활성화 후 재생 보장
+    soundManager.activateAudioContext().then(() => {
+      // 약간의 지연을 두어 확실한 재생 보장
+      setTimeout(() => {
+        if (success) {
+          // 맞췄을 때 firework 효과음 재생 (forceNew: true로 전체 재생 보장)
+          soundManager.play(SOUNDS.FIREWORK, 0.7, true);
+        } else {
+          // 틀렸을 때 fail 효과음 재생 (forceNew: true로 전체 재생 보장)
+          soundManager.play(SOUNDS.FAIL, 0.7, true);
+        }
+      }, 100);
+    });
+  }, [success]);
+
+  // 컴포넌트 언마운트 시 모든 confetti 파티클 제거
+  useEffect(() => {
+    return () => {
+      // 화면 전환 시 모든 confetti 파티클 즉시 제거
+      confetti.reset();
+    };
+  }, []);
 
   // 결과를 구글 시트에 저장
   useEffect(() => {
@@ -171,8 +201,8 @@ export default function ResultDisplay({
                       `작품이네요! ${CLASS_NAMES[targetClass] || targetClass} 너무 잘 그리셨어요`,
                       "AI가 감탄했습니다!",
                       "정확하게 맞추셨네요! 대단하세요!",
-                      "이 정도면 예술가십니다!",
-                      "AI가 박수치고 있습니다!",
+                      "대단하신데요? 이 정도면 예술가십니다!",
+                      "와~ AI가 박수치고 있습니다!",
                     ][Math.floor(Math.random() * 5)]
                   : [
                       "아깝지만 괜찮아요! 다음엔 딱 맞추실 거예요.",

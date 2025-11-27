@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { Palette } from "lucide-react";
 import Footer from "@/components/Footer";
 import EventHeader from "@/components/EventHeader";
 import MatrixBackground from "@/components/MatrixBackground";
+import { soundManager, SOUNDS } from "@/lib/sound";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface LoginFormProps {
@@ -23,12 +24,15 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSubmit, onUserFound }: LoginFormProps) {
   const isMobile = useIsMobile(); // 모바일 레이아웃 감지
-  const [company, setCompany] = useState("");
+  const [company, setCompany] = useState("농심"); // 기본값: 농심
   const [employeeId, setEmployeeId] = useState("");
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [error, setError] = useState<string>("");
+  const backgroundAudioRef = useRef<HTMLAudioElement | null>(null); // 배경음악 Audio 객체 참조
+  const hasUserInteracted = useRef(false); // 사용자 상호작용 여부 추적
+  const autoPlayAttempted = useRef(false); // 자동재생 시도 여부
 
   const texts = [
     "제한 시간 안에 최대한 빨리 그려보세요!",
@@ -37,6 +41,57 @@ export default function LoginForm({ onSubmit, onUserFound }: LoginFormProps) {
     "한 번에 알아볼 수 있게 그릴 수 있을까요?",
     "사람은 몰라도 AI는 알아볼 수도 있어요!"
   ];
+
+  // 배경음악 재생 함수 (자동재생 시도 및 사용자 상호작용 시 재생)
+  const startBackgroundMusic = (isUserInteraction: boolean = false) => {
+    // 이미 재생 중이면 중복 재생 방지
+    if (backgroundAudioRef.current && !backgroundAudioRef.current.paused) {
+      return;
+    }
+
+    // 크롬: 오디오 컨텍스트 활성화 후 배경음악 재생
+    soundManager.activateAudioContext().then(() => {
+      if (!backgroundAudioRef.current) {
+        // 약간의 지연을 두어 확실한 재생 보장
+        setTimeout(() => {
+          const audio = soundManager.playBackground(SOUNDS.MATRIX, 0.5);
+          if (audio) {
+            backgroundAudioRef.current = audio;
+            if (isUserInteraction) {
+              hasUserInteracted.current = true;
+            }
+          }
+        }, 100);
+      } else {
+        // 이미 Audio 객체가 있으면 재생 시도
+        backgroundAudioRef.current.play().catch(() => {
+          // 재생 실패 시 무시 (크롬 정책으로 차단될 수 있음)
+        });
+      }
+    });
+  };
+
+  // 컴포넌트 마운트 시 자동재생 시도 (크롬 정책으로 실패할 수 있지만 시도)
+  useEffect(() => {
+    // 자동재생 시도 (한 번만)
+    if (!autoPlayAttempted.current) {
+      autoPlayAttempted.current = true;
+      // 약간의 지연 후 자동재생 시도 (페이지 로드 완료 후)
+      setTimeout(() => {
+        startBackgroundMusic(false);
+      }, 500);
+    }
+  }, []);
+
+  // 컴포넌트 언마운트 시 음악 정지
+  useEffect(() => {
+    return () => {
+      if (backgroundAudioRef.current) {
+        backgroundAudioRef.current.pause();
+        backgroundAudioRef.current.currentTime = 0;
+      }
+    };
+  }, []);
 
   // 타이핑 효과
   useEffect(() => {
@@ -66,6 +121,8 @@ export default function LoginForm({ onSubmit, onUserFound }: LoginFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // 크롬: 사용자 상호작용 시점에 오디오 컨텍스트 확실히 활성화
+    soundManager.activateAudioContext();
     setError("");
     
     if (!company || !employeeId) {
@@ -126,6 +183,8 @@ export default function LoginForm({ onSubmit, onUserFound }: LoginFormProps) {
       </div>
       <div 
         className={`flex-1 flex items-center justify-center ${isMobile ? 'p-3 pt-20' : 'p-6'} overflow-y-auto relative z-10`}
+        onClick={() => startBackgroundMusic(true)}
+        onKeyDown={() => startBackgroundMusic(true)}
       >
         <div className={`w-full ${isMobile ? 'max-w-md' : 'max-w-5xl'}`}>
           {/* 헤더 */}

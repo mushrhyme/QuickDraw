@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Footer from "@/components/Footer";
 import EventHeader from "@/components/EventHeader";
 import MatrixBackground from "@/components/MatrixBackground";
 import { CATEGORY_NAMES } from "@shared/categories";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { soundManager, SOUNDS } from "@/lib/sound";
 
 interface ClassGuideProps {
   targetClass: string;
@@ -15,6 +16,7 @@ const CLASS_NAMES = CATEGORY_NAMES;
 export default function ClassGuide({ targetClass, onComplete }: ClassGuideProps) {
   const isMobile = useIsMobile(); // 모바일 레이아웃 감지
   const [countdown, setCountdown] = useState(5);
+  const audioRefs = useRef<HTMLAudioElement[]>([]); // 재생 중인 오디오 객체 추적
 
   useEffect(() => {
     if (countdown === 0) {
@@ -22,12 +24,36 @@ export default function ClassGuide({ targetClass, onComplete }: ClassGuideProps)
       return;
     }
 
+    // 카운트다운 효과음 재생 (5초 카운트다운이므로 모든 초에 효과음)
+    soundManager.activateAudioContext().then(() => {
+      const audio = soundManager.play(SOUNDS.COUNTDOWN, 0.6); // 카운트다운 효과음
+      if (audio) {
+        audioRefs.current.push(audio); // 재생 중인 오디오 추적
+      }
+    });
+
     const timer = setTimeout(() => {
       setCountdown(countdown - 1);
     }, 1000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [countdown, onComplete]);
+
+  // 컴포넌트 언마운트 시 모든 오디오 정지
+  useEffect(() => {
+    return () => {
+      // 모든 재생 중인 카운트다운 효과음 정지
+      audioRefs.current.forEach((audio) => {
+        if (audio && !audio.paused) {
+          audio.pause();
+          audio.currentTime = 0;
+        }
+      });
+      audioRefs.current = []; // 배열 초기화
+    };
+  }, []);
 
   return (
     <div className="h-screen flex flex-col bg-black relative overflow-hidden">

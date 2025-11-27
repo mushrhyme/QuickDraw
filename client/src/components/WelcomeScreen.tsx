@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { UserCheck } from "lucide-react";
 import Footer from "@/components/Footer";
 import EventHeader from "@/components/EventHeader";
 import MatrixBackground from "@/components/MatrixBackground";
+import { soundManager, SOUNDS } from "@/lib/sound";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface WelcomeScreenProps {
@@ -15,6 +17,16 @@ export default function WelcomeScreen({
   onContinue,
 }: WelcomeScreenProps) {
   const isMobile = useIsMobile(); // 모바일 레이아웃 감지
+  // 컴포넌트가 마운트될 때 웰컴 음악 재생 (크롬 최적화)
+  useEffect(() => {
+    // 크롬: 오디오 컨텍스트 활성화 후 재생
+    soundManager.activateAudioContext().then(() => {
+      // 약간의 지연을 두어 확실한 재생 보장
+      setTimeout(() => {
+        soundManager.play(SOUNDS.WELCOME, 0.6); // 웰컴 화면 배경음악
+      }, 100);
+    });
+  }, []);
 
   return (
     <div className="h-screen flex flex-col bg-black relative overflow-hidden">
