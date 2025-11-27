@@ -36,9 +36,12 @@ export type Category = typeof CATEGORIES[number];
  * - 전체 카테고리 사용: null
  * - 특정 카테고리만 사용: ["cat", "dog", "airplane"]
  * 
- * 현재 설정: null (전체 카테고리 사용)
+ * 현재 설정: 도넛 제외 (모델에는 있지만 제시어에서는 제외)
  */
-export const ACTIVE_CATEGORIES: readonly string[] | null = null;
+export const ACTIVE_CATEGORIES: readonly string[] | null = [
+  "cat", "dog", "airplane", "car", "bird", 
+  "horse", "elephant", "fan", "fire hydrant"
+] as const;
 
 /**
  * 실제 문제로 사용할 카테고리 목록
