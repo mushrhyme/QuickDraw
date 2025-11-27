@@ -211,7 +211,7 @@ export default function RankingBoard() {
                 <h2 className={`${isMobile ? 'text-base' : 'text-2xl'} font-semibold text-gray-900`}>이벤트 안내</h2>
                 <Sparkles className={`${isMobile ? 'w-4 h-4' : 'w-6 h-6'} text-[#26bfa6]`} strokeWidth={2} />
               </div>
-              <div className={`grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-3 gap-4'}`} style={{ marginBottom: isMobile ? '16px' : '28px' }}>
+              <div className="grid grid-cols-3 gap-4" style={{ marginBottom: isMobile ? '16px' : '28px' }}>
                 {/* 카드 1: 참여 안내 */}
                 <div 
                   className={`rounded-md ${isMobile ? 'p-3' : 'p-5'} bg-white border border-gray-200 shadow-sm`}
@@ -263,7 +263,7 @@ export default function RankingBoard() {
               <div className="mx-auto" style={{ width: isMobile ? '200px' : '300px', height: '1px', backgroundColor: 'rgba(38, 191, 166, 0.25)' }}></div>
             </div>
             {/* 테이블 영역 */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center h-full py-16">
               <div className="text-center space-y-4">
@@ -292,7 +292,7 @@ export default function RankingBoard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rankedData.map((item, index) => (
+                {rankedData.slice(0, 17).map((item, index) => (
                   <TableRow 
                     key={`${item.employeeId}-${item.completedAt}-${index}`}
                     style={{ 
