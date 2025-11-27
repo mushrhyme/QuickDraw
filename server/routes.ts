@@ -5,6 +5,7 @@ import { GoogleSheetsService } from "./googleSheets.js";
 import { quickDrawResultSchema } from "../shared/schema.js";
 import { getErrorMessage } from "../shared/utils.js";
 import { CATEGORY_NAMES } from "../shared/categories.js";
+import { sseService } from "./services/sseService.js";
 
 const router = Router();
 
@@ -106,6 +107,9 @@ router.post("/save-result", async (req, res) => {
     // 구글 시트에 저장
     await googleSheetsService.saveQuickDrawResult(data);
 
+    // SSE로 랭킹 갱신 알림 브로드캐스트
+    sseService.broadcast("ranking-updated", { message: "랭킹이 갱신되었습니다" });
+
     console.log("✅ 결과 저장 완료");
     console.log("=".repeat(60));
 
@@ -189,8 +193,14 @@ router.get("/ranking", async (req, res) => {
   }
 });
 
+// SSE 스트림 엔드포인트 (랭킹 갱신 알림)
+router.get("/ranking/stream", (req, res) => {
+  sseService.addClient(res);
+});
+
 // 라우트 등록 확인 로그
 console.log("✅ /api/ranking GET 라우트 등록됨");
+console.log("✅ /api/ranking/stream GET 라우트 등록됨");
 
 export default router;
 

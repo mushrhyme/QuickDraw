@@ -263,7 +263,7 @@ export default function RankingBoard() {
               <div className="mx-auto" style={{ width: isMobile ? '200px' : '300px', height: '1px', backgroundColor: 'rgba(38, 191, 166, 0.25)' }}></div>
             </div>
             {/* 테이블 영역 */}
-            <div className="flex-1 overflow-hidden">
+            <div className="overflow-hidden h-[1400px]">
           {isLoading ? (
             <div className="flex items-center justify-center h-full py-16">
               <div className="text-center space-y-4">
@@ -292,7 +292,7 @@ export default function RankingBoard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rankedData.slice(0, 17).map((item, index) => (
+                {rankedData.slice(0, 15).map((item, index) => (
                   <TableRow 
                     key={`${item.employeeId}-${item.completedAt}-${index}`}
                     style={{ 
